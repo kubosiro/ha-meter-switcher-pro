@@ -510,6 +510,16 @@ class MeterSwitcherCard extends HTMLElement {
     const fcKwh  = (totalKwh / passed) * total;
     const fcCost = calcTierAndCost(fcKwh, vat, tiers).cost;
 
+    const swSt       = this._getSt(e.physical_switch);
+    const activeMeter = swSt === 'on' ? switchOnIs : (switchOnIs === 'meter1' ? 'meter2' : 'meter1');
+
+    const barPct = (kwh, calc) => {
+      const tops = [50,100,200,300,400];
+      const bot  = calc.tier > 1 ? tops[calc.tier-2] : 0;
+      const top  = tops[calc.tier-1] ?? 400;
+      return Math.min(100, Math.round(((kwh-bot)/(top-bot))*100));
+    };
+
     // Auto Mode Logic (Fallback to internal memory if no entity)
     const amEntity = e.auto_mode;
     let autoOn = false;
