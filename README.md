@@ -28,7 +28,7 @@ Vào **Settings -> Devices & Services -> Add Integration** -> Tìm kiếm **Mete
 
 1. Vào **Settings -> Dashboards -> 3 chấm (Resources)**.
 2. Thêm Resource mới:
-   - URL: `/hacsfiles/meter_switcher/meter-switcher-card.js`
+   - URL: `/meter-switcher/card.js`
    - Loại: `JavaScript Module`
 3. Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
 
