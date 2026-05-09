@@ -23,17 +23,35 @@
 
 ```yaml
 type: custom:meter-switcher-card
-title: "TRẠM ĐIỀU KHIỂN ĐIỆN"
-billing_day: 7        # Ngày chốt hóa đơn hàng tháng
-vat: 8                # % VAT (mặc định 8%)
-switch_on_is: meter1  # Khi switch ON thì đang dùng công tơ nào (meter1 hoặc meter2)
+title: "TRẠM ĐIỀU KHIỂN ĐIỆN"  # Tiêu đề hiển thị trên card
+
+# --- Thông số tính toán ---
+billing_day: 1          # Ngày chốt hóa đơn hàng tháng (1-31)
+vat: 8                  # % VAT áp dụng (mặc định: 8)
+switch_on_is: meter1    # Khi switch ở trạng thái ON thì đang dùng công tơ nào: meter1 hoặc meter2
+
+# --- Cảnh báo & Tự động ---
+warning_kwh: 380        # Ngưỡng kWh để hiện badge cảnh báo "Gần đầy" (mặc định: 380)
+auto_switch_hour: 12    # Giờ tự động đảo hiển thị trên card (mặc định: 12, cần tạo Automation riêng)
+
 entities:
-  meter1_name: "Tên công tơ 1"
-  meter2_name: "Tên công tơ 2"
+  # Tên hiển thị
+  meter1_name: "Công tơ 1"
+  meter2_name: "Công tơ 2"
+
+  # Sensor kWh tiêu thụ kỳ này (BẮT BUỘC)
   meter1_kwh: sensor.tieu_thu_ky_nay_tieu_thu
   meter2_kwh: sensor.tieu_thu_ky_nay_2_tieu_thu
+
+  # Sensor tiền điện từ NPC (TÙY CHỌN - nếu có sẽ dùng thay vì tự tính)
+  meter1_cost: sensor.tieu_thu_ky_nay_tien_dien
+  meter2_cost: sensor.tieu_thu_ky_nay_2_tien_dien
+
+  # Công tắc điều khiển vật lý (BẮT BUỘC)
   physical_switch: switch.sonoff_device
-  auto_mode: switch.che_do_tu_dong        # Optional: toggle switch cho chế độ tự động
+
+  # Công tắc chế độ tự động (TÙY CHỌN)
+  auto_mode: switch.che_do_tu_dong
 ```
 
 ## ⚡ Tự động hóa đảo công tơ lúc 12h
