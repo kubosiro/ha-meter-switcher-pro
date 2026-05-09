@@ -1,9 +1,8 @@
 /**
  * Meter Switcher Card - Pure Frontend for Home Assistant
- * Version: 2.1.2
+ * Version: 2.2.0
  */
-
-// 🚀 METER SWITCHER PRO - PHIÊN BẢN v2.1.7 (BẢN SẠCH NHẤT)
+// 🚀 METER SWITCHER PRO - PHIÊN BẢN v2.2.0 (BẢN HOÀN THIỆN CUỐI CÙNG)
 window.customCards = window.customCards || [];
 if (!window.customCards.find(c => c.type === 'meter-switcher-card')) {
   window.customCards.push({
@@ -87,11 +86,12 @@ const CARD_CSS = `
   .meter.active { background:rgba(33,150,243,.12); border-color:rgba(33,150,243,.4); }
   .meter.warning { border-color:rgba(255,152,0,.5); background:rgba(255,152,0,.07); }
   .meter-row { display:flex; justify-content:space-between; align-items:center; }
-  .meter-name { font-size:13px; font-weight:700; color:rgba(255,255,255,.85); }
+  .meter-name { font-size: 14px; font-weight: 700; color: var(--primary-text-color); }
   .meter.active .meter-name { color:#2196f3; }
   .meter.warning .meter-name { color:#ff9800; }
+  .meter-status { font-size: 11px; font-style: italic; color: var(--primary-color); height: 14px; margin-top: -2px; margin-bottom: 2px; }
+  .meter-val { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
   .meter-info { text-align:right; }
-  .meter-val { font-size:13px; font-weight:900; color:rgba(255,255,255,.95); }
   .meter-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:2px; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
   .warn-badge { font-size:9px; font-weight:700; color:#ff4444; background:rgba(255,68,68,0.15); padding:1px 5px; border-radius:4px; }
   .warn-dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; box-shadow: 0 0 8px #ff4444; animation: warn-pulse 1.2s infinite; display: inline-block; margin-left: 6px; vertical-align: middle; }
@@ -160,6 +160,7 @@ const CARD_HTML = `
       <div class="meter-row">
         <div class="meter-name" id="m1-name"></div>
         <div class="meter-info">
+          <div class="meter-status" id="m1-status"></div>
           <div class="meter-val" id="m1-val"></div>
           <div class="meter-sub"><span id="m1-tier"></span><div class="warn-dot" id="m1-dot" style="display:none"></div><span class="warn-badge" id="m1-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
@@ -171,6 +172,7 @@ const CARD_HTML = `
       <div class="meter-row">
         <div class="meter-name" id="m2-name"></div>
         <div class="meter-info">
+          <div class="meter-status" id="m2-status"></div>
           <div class="meter-val" id="m2-val"></div>
           <div class="meter-sub"><span id="m2-tier"></span><div class="warn-dot" id="m2-dot" style="display:none"></div><span class="warn-badge" id="m2-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
@@ -545,6 +547,7 @@ class MeterSwitcherCard extends HTMLElement {
       const defaultName = n === 1 ? 'Đồng hồ 1' : 'Đồng hồ 2';
       Q(`m${n}-name`).textContent = e[`meter${n}_name`] || defaultName;
       Q(`m${n}-val`).textContent  = `${fmtKwh(kwh)} | ${fmt(costVal)}`;
+      Q(`m${n}-status`).textContent = active ? '(đang cấp điện)' : '';
       Q(`m${n}-tier`).textContent = `Bậc ${calcR.tier}`;
       Q(`m${n}-warn`).style.display = isWarn ? 'inline-block' : 'none';
       Q(`m${n}-dot`).style.display  = isWarn ? 'inline-block' : 'none';
