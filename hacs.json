@@ -2,7 +2,6 @@
   "name": "Meter Switcher Pro",
   "description": "An intelligent dual-meter switcher with high-safety manual override and billing-cycle optimization.",
   "render_readme": true,
-  "manifest": "custom_components/meter_switcher/manifest.json",
   "domains": ["meter_switcher"],
   "homeassistant": "2024.1.0",
   "iot_class": "local_polling",
