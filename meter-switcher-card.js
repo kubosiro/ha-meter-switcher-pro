@@ -89,7 +89,7 @@ const CARD_CSS = `
   .meter-name { font-size: 14px; font-weight: 700; color: var(--primary-text-color); }
   .meter.active .meter-name { color:#2196f3; }
   .meter.warning .meter-name { color:#ff9800; }
-  .meter-status { font-size: 11px; font-style: italic; color: var(--primary-color); height: 14px; margin-top: -2px; margin-bottom: 2px; }
+  .meter-status { font-size: 11px; font-style: italic; color: #f44336; height: 14px; margin-top: 2px; }
   .meter-val { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
   .meter-info { text-align:right; }
   .meter-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:2px; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
@@ -158,9 +158,11 @@ const CARD_HTML = `
 
     <div class="meter" id="meter1">
       <div class="meter-row">
-        <div class="meter-name" id="m1-name"></div>
-        <div class="meter-info">
+        <div class="meter-left">
+          <div class="meter-name" id="m1-name"></div>
           <div class="meter-status" id="m1-status"></div>
+        </div>
+        <div class="meter-info">
           <div class="meter-val" id="m1-val"></div>
           <div class="meter-sub"><span id="m1-tier"></span><div class="warn-dot" id="m1-dot" style="display:none"></div><span class="warn-badge" id="m1-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
@@ -170,9 +172,11 @@ const CARD_HTML = `
 
     <div class="meter" id="meter2">
       <div class="meter-row">
-        <div class="meter-name" id="m2-name"></div>
-        <div class="meter-info">
+        <div class="meter-left">
+          <div class="meter-name" id="m2-name"></div>
           <div class="meter-status" id="m2-status"></div>
+        </div>
+        <div class="meter-info">
           <div class="meter-val" id="m2-val"></div>
           <div class="meter-sub"><span id="m2-tier"></span><div class="warn-dot" id="m2-dot" style="display:none"></div><span class="warn-badge" id="m2-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
@@ -547,7 +551,7 @@ class MeterSwitcherCard extends HTMLElement {
       const defaultName = n === 1 ? 'Đồng hồ 1' : 'Đồng hồ 2';
       Q(`m${n}-name`).textContent = e[`meter${n}_name`] || defaultName;
       Q(`m${n}-val`).textContent  = `${fmtKwh(kwh)} | ${fmt(costVal)}`;
-      Q(`m${n}-status`).textContent = active ? '(đang cấp điện)' : '';
+      Q(`m${n}-status`).textContent = active ? 'đang cấp điện' : '';
       Q(`m${n}-tier`).textContent = `Bậc ${calcR.tier}`;
       Q(`m${n}-warn`).style.display = isWarn ? 'inline-block' : 'none';
       Q(`m${n}-dot`).style.display  = isWarn ? 'inline-block' : 'none';
