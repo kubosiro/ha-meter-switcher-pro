@@ -238,7 +238,7 @@ class MeterSwitcherCard extends HTMLElement {
     });
     ['meter1','meter2'].forEach(id => {
       this._q(id).addEventListener('click', () => {
-        if (this._safetyState === 0) this._phase1();
+        if (this._safetyState === 0) this._checkGridThenStart();
       });
     });
     this._q('ov-cancel').addEventListener('click', () => this._reset());
@@ -250,7 +250,7 @@ class MeterSwitcherCard extends HTMLElement {
     const e  = c.entities || {};
     const vat         = c.vat         ?? 8;
     const billingDay  = c.billing_day  ?? 1;
-    const warningKwh  = c.warning_kwh  ?? 380;
+    const warningThreshold = c.warning_threshold ?? 10;
     const autoHour    = c.auto_switch_hour ?? null;
     const switchOnIs  = c.switch_on_is ?? 'meter1';
 
@@ -293,7 +293,7 @@ class MeterSwitcherCard extends HTMLElement {
 
     // Meters
     const renderMeter = (n, kwh, calcR, costVal, active) => {
-      const isWarn = kwh >= warningKwh;
+      const isWarn = calcR.remaining > 0 && calcR.remaining <= warningThreshold;
       Q(`m${n}-name`).textContent = e[`meter${n}_name`] || `Công tơ ${n}`;
       Q(`m${n}-val`).textContent  = `${fmtKwh(kwh)} | ${fmt(costVal)}`;
       Q(`m${n}-tier`).textContent = `Bậc ${calcR.tier}`;
@@ -316,10 +316,34 @@ class MeterSwitcherCard extends HTMLElement {
     const ai = Q('auto-info');
     if (autoHour !== null) {
       ai.style.display = 'flex';
-      Q('ai-val').textContent = `${String(autoHour).padStart(2,'0')}:00  •  Ngưỡng ${warningKwh} kWh`;
+      Q('ai-val').textContent = `${String(autoHour).padStart(2,'0')}:00  •  Báo trước ${warningThreshold} kWh`;
     } else {
       ai.style.display = 'none';
     }
+  }
+
+  _checkGridThenStart() {
+    const gp  = this._config.entities?.grid_power;
+    const val = gp ? this._getNum(gp) : 0;
+    if (val > 0) {
+      this._showGridWarning(val);
+      return;
+    }
+    this._phase1();
+  }
+
+  _showGridWarning(val) {
+    const Q = id => this._q(id);
+    Q('overlay').className    = 'overlay show';
+    Q('ov-title').textContent  = '⛔ KHÔNG THỂ ĐẢO NGUỒN';
+    Q('ov-title').style.color  = '#f44336';
+    Q('ov-sub').textContent    = `Đang có tải ${Math.round(val)} W trên lưới điện`;
+    Q('ov-count').textContent  = '';
+    Q('ov-msg').style.display  = 'block';
+    Q('ov-msg').textContent    = '⚠️ Tắt tải điện trước khi đảo nguồn để tránh hư hỏng thiết bị và công tơ.';
+    Q('ov-btns').style.display = 'none';
+    Q('ov-hint').textContent   = 'Tự động đóng sau 3s...';
+    setTimeout(() => this._reset(), 3000);
   }
 
   _phase1() {

@@ -23,36 +23,40 @@
 
 ```yaml
 type: custom:meter-switcher-card
-title: "TRẠM ĐIỀU KHIỂN ĐIỆN"  # Tiêu đề hiển thị trên card
+title: "TRẠM ĐIỀU KHIỂN ĐIỆN"
 
 # --- Thông số tính toán ---
-billing_day: 1          # Ngày chốt hóa đơn hàng tháng (1-31)
-vat: 8                  # % VAT áp dụng (mặc định: 8)
-switch_on_is: meter1    # Khi switch ở trạng thái ON thì đang dùng công tơ nào: meter1 hoặc meter2
+billing_day: 1            # Ngày chốt hóa đơn hàng tháng (1-31)
+vat: 8                    # % VAT (mặc định: 8)
+switch_on_is: meter1      # Công tơ đang dùng khi switch ON: meter1 hoặc meter2
 
-# --- Cảnh báo & Tự động ---
-warning_kwh: 380        # Ngưỡng kWh để hiện badge cảnh báo "Gần đầy" (mặc định: 380)
-auto_switch_hour: 12    # Giờ tự động đảo hiển thị trên card (mặc định: 12, cần tạo Automation riêng)
+# --- Cảnh báo & Hiển thị ---
+warning_threshold: 10     # Cảnh báo "Gần đầy" khi còn <= X kWh trước bậc tiếp (mặc định: 10)
+auto_switch_hour: 12      # Giờ tự động đảo hiển thị trên card (mặc định: 12)
 
 entities:
-  # Tên hiển thị
+  # Tên hiển thị trên card
   meter1_name: "Công tơ 1"
   meter2_name: "Công tơ 2"
 
-  # Sensor kWh tiêu thụ kỳ này (BẮT BUỘC)
+  # BẮT BUỘC — Sensor kWh tiêu thụ kỳ này
   meter1_kwh: sensor.tieu_thu_ky_nay_tieu_thu
   meter2_kwh: sensor.tieu_thu_ky_nay_2_tieu_thu
 
-  # Sensor tiền điện từ NPC (TÙY CHỌN - nếu có sẽ dùng thay vì tự tính)
+  # BẮT BUỘC — Công tắc vật lý điều khiển đảo nguồn
+  physical_switch: switch.sonoff_device
+
+  # TÙY CHỌN — Sensor tiền điện từ NPC (ưu tiên dùng thay vì tự tính)
   meter1_cost: sensor.tieu_thu_ky_nay_tien_dien
   meter2_cost: sensor.tieu_thu_ky_nay_2_tien_dien
 
-  # Công tắc điều khiển vật lý (BẮT BUỘC)
-  physical_switch: switch.sonoff_device
+  # TÙY CHỌN — Khóa an toàn: chặn đảo nguồn khi đang có tải điện
+  grid_power: sensor.grid_power   # W hoặc kW, chặn khi giá trị > 0
 
-  # Công tắc chế độ tự động (TÙY CHỌN)
+  # TÙY CHỌN — Công tắc chế độ tự động
   auto_mode: switch.che_do_tu_dong
 ```
+
 
 ## ⚡ Tự động hóa đảo công tơ lúc 12h
 
