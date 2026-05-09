@@ -450,9 +450,228 @@ class MeterSwitcherCard extends HTMLElement {
   }
 
   getCardSize() { return 6; }
+
+  static getStubConfig() {
+    return {
+      title: 'TRẠM ĐIỀU KHIỂN ĐIỆN',
+      billing_day: 1,
+      vat: 8,
+      switch_on_is: 'meter1',
+      warning_threshold: 10,
+      auto_switch_hour: 12,
+      entities: {
+        meter1_name: 'Công tơ 1',
+        meter2_name: 'Công tơ 2',
+      },
+    };
+  }
+
+  static getConfigElement() {
+    return document.createElement('meter-switcher-card-editor');
+  }
 }
 
 customElements.define('meter-switcher-card', MeterSwitcherCard);
+
+// ─── Visual Editor ──────────────────────────────────────────────────────────
+
+class MeterSwitcherCardEditor extends HTMLElement {
+  set hass(hass) { this._hass = hass; this._renderPickers(); }
+
+  setConfig(config) {
+    this._config = JSON.parse(JSON.stringify(config));
+    this._render();
+  }
+
+  _fire(cfg) {
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: cfg }, bubbles: true, composed: true }));
+  }
+
+  _set(path, value) {
+    const cfg = JSON.parse(JSON.stringify(this._config || {}));
+    const keys = path.split('.');
+    let obj = cfg;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!obj[keys[i]]) obj[keys[i]] = {};
+      obj = obj[keys[i]];
+    }
+    if (value === '' || value === null || value === undefined) {
+      delete obj[keys[keys.length - 1]];
+    } else {
+      obj[keys[keys.length - 1]] = value;
+    }
+    this._config = cfg;
+    this._fire(cfg);
+  }
+
+  _render() {
+    if (!this._config) return;
+    const c = this._config;
+    const e = c.entities || {};
+    const tiers = c.tier_prices || EVN_TIERS;
+
+    this.innerHTML = `
+      <style>
+        .editor { padding: 8px; font-family: var(--primary-font-family, sans-serif); }
+        .section-title { font-size: 11px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;
+          letter-spacing: 0.8px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .field-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .field { flex: 1; }
+        label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
+        input[type=text], input[type=number], select {
+          width: 100%; box-sizing: border-box; padding: 7px 8px;
+          background: var(--secondary-background-color, #2c2c2e);
+          border: 1px solid var(--divider-color, rgba(255,255,255,.1));
+          border-radius: 6px; color: var(--primary-text-color); font-size: 12px;
+        }
+        .tier-table { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+        .tier-lbl { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
+        .picker-slot { margin-bottom: 8px; }
+        .picker-slot label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
+      </style>
+      <div class="editor">
+        <div class="section-title">⚙️ Cấu hình chung</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tiêu đề</label>
+            <input type="text" id="title" value="${c.title || ''}" placeholder="TRẠM ĐIỀU KHIỂN ĐIỆN">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Ngày chốt HĐ (1-31)</label>
+            <input type="number" id="billing_day" value="${c.billing_day ?? 1}" min="1" max="31">
+          </div>
+          <div class="field">
+            <label>VAT (%)</label>
+            <input type="number" id="vat" value="${c.vat ?? 8}" min="0" max="20">
+          </div>
+          <div class="field">
+            <label>Cảnh báo trước (kWh)</label>
+            <input type="number" id="warning_threshold" value="${c.warning_threshold ?? 10}" min="1" max="50">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Khi switch ON dùng</label>
+            <select id="switch_on_is">
+              <option value="meter1" ${(c.switch_on_is || 'meter1') === 'meter1' ? 'selected' : ''}>Công tơ 1</option>
+              <option value="meter2" ${c.switch_on_is === 'meter2' ? 'selected' : ''}>Công tơ 2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Giờ hiển thị tự động đảo</label>
+            <input type="number" id="auto_switch_hour" value="${c.auto_switch_hour ?? ''}" min="0" max="23" placeholder="(bỏ trống để ẩn)">
+          </div>
+        </div>
+
+        <div class="section-title">🔌 Thực thể</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tên Công tơ 1</label>
+            <input type="text" id="meter1_name" value="${e.meter1_name || ''}" placeholder="Công tơ 1">
+          </div>
+          <div class="field">
+            <label>Tên Công tơ 2</label>
+            <input type="text" id="meter2_name" value="${e.meter2_name || ''}" placeholder="Công tơ 2">
+          </div>
+        </div>
+
+        <div class="picker-slot"><label>⚡ CT1 kWh (BẮT BUỘC)</label><div id="pk-meter1_kwh"></div></div>
+        <div class="picker-slot"><label>⚡ CT2 kWh (BẮT BUỘC)</label><div id="pk-meter2_kwh"></div></div>
+        <div class="picker-slot"><label>🔘 Switch vật lý (BẮT BUỘC)</label><div id="pk-physical_switch"></div></div>
+        <div class="picker-slot"><label>💰 Tiền CT1 từ NPC (tuỳ chọn)</label><div id="pk-meter1_cost"></div></div>
+        <div class="picker-slot"><label>💰 Tiền CT2 từ NPC (tuỳ chọn)</label><div id="pk-meter2_cost"></div></div>
+        <div class="picker-slot"><label>⚡ Công suất lưới Grid (tuỳ chọn)</label><div id="pk-grid_power"></div></div>
+        <div class="picker-slot"><label>🔄 Switch chế độ tự động (tuỳ chọn)</label><div id="pk-auto_mode"></div></div>
+
+        <div class="section-title">⚡ Bảng giá bậc điện (QĐ 1279/QĐ-BCT)</div>
+        <div class="tier-table">
+          <span class="tier-lbl">Bậc 1 (0–50 kWh)</span>
+          <input type="number" id="t0" value="${tiers[0]?.price ?? 1984}" min="0">
+          <span class="tier-lbl">Bậc 2 (51–100 kWh)</span>
+          <input type="number" id="t1" value="${tiers[1]?.price ?? 2050}" min="0">
+          <span class="tier-lbl">Bậc 3 (101–200 kWh)</span>
+          <input type="number" id="t2" value="${tiers[2]?.price ?? 2380}" min="0">
+          <span class="tier-lbl">Bậc 4 (201–300 kWh)</span>
+          <input type="number" id="t3" value="${tiers[3]?.price ?? 2998}" min="0">
+          <span class="tier-lbl">Bậc 5 (301–400 kWh)</span>
+          <input type="number" id="t4" value="${tiers[4]?.price ?? 3350}" min="0">
+          <span class="tier-lbl">Bậc 6 (&gt;400 kWh)</span>
+          <input type="number" id="t5" value="${tiers[5]?.price ?? 3460}" min="0">
+        </div>
+      </div>`;
+
+    // Simple text/number inputs
+    const bind = (id, path, type) => {
+      const el = this.querySelector('#' + id);
+      if (!el) return;
+      el.addEventListener('change', () => {
+        const v = type === 'number' ? (el.value === '' ? undefined : +el.value) : el.value;
+        this._set(path, v);
+      });
+    };
+    bind('title',             'title',             'text');
+    bind('billing_day',       'billing_day',        'number');
+    bind('vat',               'vat',               'number');
+    bind('warning_threshold', 'warning_threshold', 'number');
+    bind('switch_on_is',      'switch_on_is',      'text');
+    bind('auto_switch_hour',  'auto_switch_hour',  'number');
+    bind('meter1_name',       'entities.meter1_name', 'text');
+    bind('meter2_name',       'entities.meter2_name', 'text');
+
+    // Tier prices
+    const LIMITS = [50, 100, 200, 300, 400, null];
+    for (let i = 0; i < 6; i++) {
+      this.querySelector('#t' + i)?.addEventListener('change', () => {
+        const prices = LIMITS.map((limit, j) => ({
+          limit,
+          price: +(this.querySelector('#t' + j)?.value || EVN_TIERS[j].price),
+        }));
+        this._set('tier_prices', prices);
+      });
+    }
+
+    this._renderPickers();
+  }
+
+  _renderPickers() {
+    if (!this._hass || !this._config) return;
+    const e = this._config.entities || {};
+    const PICKERS = [
+      { id: 'meter1_kwh',      domain: 'sensor', label: 'CT1 kWh' },
+      { id: 'meter2_kwh',      domain: 'sensor', label: 'CT2 kWh' },
+      { id: 'physical_switch', domain: 'switch', label: 'Switch vật lý' },
+      { id: 'meter1_cost',     domain: 'sensor', label: 'Tiền CT1' },
+      { id: 'meter2_cost',     domain: 'sensor', label: 'Tiền CT2' },
+      { id: 'grid_power',      domain: 'sensor', label: 'Grid Power' },
+      { id: 'auto_mode',       domain: 'switch', label: 'Chế độ tự động' },
+    ];
+    for (const { id, domain } of PICKERS) {
+      const slot = this.querySelector('#pk-' + id);
+      if (!slot) continue;
+      if (!slot.firstChild || slot.firstChild.tagName !== 'HA-ENTITY-PICKER') {
+        slot.innerHTML = '';
+        const pk = document.createElement('ha-entity-picker');
+        pk.setAttribute('allow-custom-entity', '');
+        pk.includeDomains = [domain];
+        pk.value = e[id] || '';
+        pk.hass  = this._hass;
+        pk.addEventListener('value-changed', ev => {
+          this._set('entities.' + id, ev.detail.value || undefined);
+        });
+        slot.appendChild(pk);
+      } else {
+        slot.firstChild.hass  = this._hass;
+        slot.firstChild.value = e[id] || '';
+      }
+    }
+  }
+}
+
+customElements.define('meter-switcher-card-editor', MeterSwitcherCardEditor);
+
+// ─── HACS Registration ───────────────────────────────────────────────────────
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -462,3 +681,4 @@ window.customCards.push({
   preview: false,
   documentationURL: 'https://github.com/kubosiro/ha-meter-switcher-pro',
 });
+
