@@ -5,6 +5,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN
 from .coordinator import MeterSwitcherCoordinator
@@ -24,11 +25,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-    # Đăng ký đường dẫn tĩnh cho Card
-    hass.http.register_static_path(
-        "/meter-switcher/card.js",
-        hass.config.path("custom_components/meter_switcher/www/meter-switcher-card.js"),
-    )
+    # Đăng ký đường dẫn tĩnh cho Card (Phiên bản mới nhất của HA)
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            "/meter-switcher/card.js",
+            hass.config.path("custom_components/meter_switcher/www/meter-switcher-card.js"),
+            True
+        )
+    ])
     
     # Tự động đăng ký Resource vào Lovelace
     hass.async_create_task(async_register_resource(hass))
