@@ -407,39 +407,10 @@ class MeterSwitcherCardEditor extends HTMLElement {
       }
     }
   }
-
-  _renderPickers() {
-    if (!this._hass || !this._config) return;
-    const e = this._config.entities || {};
-    const PICKERS = [
-      { id: 'meter1_kwh',      domain: 'sensor' },
-      { id: 'meter2_kwh',      domain: 'sensor' },
-      { id: 'physical_switch', domain: 'switch' },
-      { id: 'meter1_cost',     domain: 'sensor' },
-      { id: 'meter2_cost',     domain: 'sensor' },
-      { id: 'grid_power',      domain: 'sensor' },
-      { id: 'auto_mode',       domain: 'switch' },
-    ];
-    for (const { id, domain } of PICKERS) {
-      const slot = this.querySelector('#pk-' + id);
-      if (!slot) continue;
-      if (!slot.firstChild) {
-        const pk = document.createElement('ha-entity-picker');
-        pk.setAttribute('allow-custom-entity', '');
-        pk.includeDomains = [domain];
-        pk.value = e[id] || '';
-        pk.hass  = this._hass;
-        pk.addEventListener('value-changed', ev => this._set('entities.' + id, ev.detail.value));
-        slot.appendChild(pk);
-      } else {
-        slot.firstChild.hass = this._hass;
-        slot.firstChild.value = e[id] || '';
-      }
-    }
-  }
 }
 
 customElements.define('meter-switcher-card-editor', MeterSwitcherCardEditor);
+
 
 // ─── Main Card ──────────────────────────────────────────────────────────────
 
