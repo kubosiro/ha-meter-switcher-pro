@@ -501,8 +501,9 @@ class MeterSwitcherCard extends HTMLElement {
     const kwh2  = this._getNum(e.meter2_kwh);
     const { passed, total } = getDayInfo(billingDay);
 
-    // Dynamic Warning Threshold
-    const avgDaily = Math.max(10, (kwh1 + kwh2) / passed);
+    // Dynamic Warning Threshold (Real Auto)
+    const rawAvg = (kwh1 + kwh2) / passed;
+    const avgDaily = rawAvg > 0.1 ? rawAvg : 10;
     const threshold = c.warning_mode === 'manual' ? (c.warning_threshold ?? 10) : avgDaily;
     const calc1 = calcTierAndCost(kwh1, vat, tiers);
     const calc2 = calcTierAndCost(kwh2, vat, tiers);
