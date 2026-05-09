@@ -3,6 +3,7 @@
  * Version: 2.1.2
  */
 
+// 🚀 METER SWITCHER PRO - PHIÊN BẢN v2.1.7 (BẢN SẠCH NHẤT)
 window.customCards = window.customCards || [];
 if (!window.customCards.find(c => c.type === 'meter-switcher-card')) {
   window.customCards.push({
@@ -712,15 +713,4 @@ class MeterSwitcherCard extends HTMLElement {
 
 customElements.define('meter-switcher-card', MeterSwitcherCard);
 
-// ─── HACS Registration ───────────────────────────────────────────────────────
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'meter-switcher-card',
-  name: 'Meter Switcher Card',
-  description: 'Quản lý và đảo nguồn giữa 2 công tơ điện EVN với quy trình an toàn 3 bước.',
-  preview: false,
-  documentationURL: 'https://github.com/kubosiro/ha-meter-switcher-pro',
-});
-
-
+console.log("%c 🚀 METER SWITCHER CARD v2.1.7 LOADED ", "background: #222; color: #bada55; padding: 5px;");
