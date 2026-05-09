@@ -291,7 +291,7 @@ class MeterSwitcherCardEditor extends HTMLElement {
           <div class="picker-slot"><label>Tiền CT1 (NPC)</label><div id="pk-meter1_cost"></div></div>
           <div class="picker-slot"><label>Tiền CT2 (NPC)</label><div id="pk-meter2_cost"></div></div>
           <div class="picker-slot"><label>Công suất lưới (Grid)</label><div id="pk-grid_power"></div></div>
-          <div class="picker-slot"><label>Switch chế độ Tự động</label><div id="pk-auto_mode"></div></div>
+          <div class="picker-slot"><label>Switch chế độ Tự động <small>(Tùy chọn - Bỏ trống để dùng bộ nhớ ảo)</small></label><div id="pk-auto_mode"></div></div>
         </div>
 
         <div id="tab-tiers" class="${this._curTab === 'tiers' ? '' : 'hidden'}">
@@ -700,8 +700,8 @@ class MeterSwitcherCard extends HTMLElement {
       switch_on_is: 'meter1',
       warning_mode: 'auto',
       entities: {
-        meter1_name: 'Ông Mỵ',
-        meter2_name: 'Hùng',
+        meter1_name: 'Đồng hồ 1',
+        meter2_name: 'Đồng hồ 2',
       }
     };
   }
