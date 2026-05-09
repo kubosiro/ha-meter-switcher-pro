@@ -497,7 +497,6 @@ class MeterSwitcherCard extends HTMLElement {
     const totalCost = cost1 + cost2;
     const savings   = Math.max(0, calcTierAndCost(totalKwh, vat, tiers).cost - totalCost);
 
-    const { passed, total } = getDayInfo(billingDay);
     const fcKwh  = (totalKwh / passed) * total;
     const fcCost = calcTierAndCost(fcKwh, vat, tiers).cost;
 
