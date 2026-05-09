@@ -1,7 +1,18 @@
 /**
  * Meter Switcher Card - Pure Frontend for Home Assistant
- * https://github.com/kubosiro/ha-meter-switcher-pro
+ * Version: 2.1.2
  */
+
+window.customCards = window.customCards || [];
+if (!window.customCards.find(c => c.type === 'meter-switcher-card')) {
+  window.customCards.push({
+    type: 'meter-switcher-card',
+    name: 'Meter Switcher Card',
+    description: 'Quản lý và đảo nguồn giữa 2 công tơ điện EVN với quy trình an toàn 3 bước.',
+    preview: true,
+    documentationURL: 'https://github.com/kubosiro/ha-meter-switcher-pro',
+  });
+}
 
 const EVN_TIERS = [
   { limit: 50,   price: 1984 },
@@ -199,6 +210,11 @@ const CARD_HTML = `
 // ─── Visual Editor ──────────────────────────────────────────────────────────
 
 class MeterSwitcherCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._curTab = 'config';
+  }
+
   set hass(hass) { this._hass = hass; this._renderPickers(); }
 
   setConfig(config) {
@@ -236,101 +252,99 @@ class MeterSwitcherCardEditor extends HTMLElement {
     this.innerHTML = `
       <style>
         .editor { padding: 8px; font-family: var(--primary-font-family, sans-serif); }
-        .section-title { font-size: 11px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;
-          letter-spacing: 0.8px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .field-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--divider-color); }
+        .tab { padding: 8px 16px; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--secondary-text-color); border-bottom: 2px solid transparent; transition: all .2s; }
+        .tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        
+        .section-title { font-size: 11px; font-weight: 700; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.8px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .field-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-end; }
         .field { flex: 1; }
         label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
         input[type=text], input[type=number], select {
-          width: 100%; box-sizing: border-box; padding: 7px 8px;
+          width: 100%; box-sizing: border-box; padding: 8px 10px;
           background: var(--secondary-background-color, #2c2c2e);
           border: 1px solid var(--divider-color, rgba(255,255,255,.1));
-          border-radius: 6px; color: var(--primary-text-color); font-size: 12px;
+          border-radius: 8px; color: var(--primary-text-color); font-size: 12px;
         }
         .picker-slot { margin-bottom: 8px; }
-        .tier-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+        .tier-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; }
         .tier-num { font-size: 10px; color: var(--primary-color); font-weight: 700; width: 40px; }
-        .btn-add { background: var(--primary-color); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; margin-top: 8px; }
-        .btn-del { background: rgba(255,68,68,0.2); color: #ff4444; border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; }
+        .btn-add { background: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; width: 100%; }
+        .btn-del { background: rgba(255,68,68,0.2); color: #ff4444; border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .hidden { display: none; }
       </style>
       <div class="editor">
-        <div class="section-title">⚙️ Cấu hình chung</div>
-        <div class="field-row">
-          <div class="field">
-            <label>Tiêu đề Card</label>
-            <input type="text" id="title" value="${c.title || ''}" placeholder="TRẠM ĐIỀU KHIỂN ĐIỆN">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Ngày chốt HĐ</label>
-            <input type="number" id="billing_day" value="${c.billing_day ?? 1}">
-          </div>
-          <div class="field">
-            <label>Thuế VAT (%)</label>
-            <input type="number" id="vat" value="${c.vat ?? 8}">
-          </div>
-          <div class="field">
-            <label>Switch ON là</label>
-            <select id="switch_on_is">
-              <option value="meter1" ${(c.switch_on_is || 'meter1') === 'meter1' ? 'selected' : ''}>Công tơ 1</option>
-              <option value="meter2" ${c.switch_on_is === 'meter2' ? 'selected' : ''}>Công tơ 2</option>
-            </select>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Chế độ cảnh báo</label>
-            <select id="warning_mode">
-              <option value="auto" ${(c.warning_mode || 'auto') === 'auto' ? 'selected' : ''}>Tự lấy trung bình ngày</option>
-              <option value="manual" ${c.warning_mode === 'manual' ? 'selected' : ''}>Thủ công (Điền số)</option>
-            </select>
-          </div>
-          ${c.warning_mode === 'manual' ? `
-          <div class="field">
-            <label>Ngưỡng (kWh)</label>
-            <input type="number" id="warning_threshold" value="${c.warning_threshold ?? 10}">
-          </div>` : ''}
-          <div class="field">
-            <label>Giờ tự động đảo</label>
-            <input type="number" id="auto_switch_hour" value="${c.auto_switch_hour ?? ''}" placeholder="0-23">
-          </div>
+        <div class="tabs">
+          <div class="tab ${this._curTab === 'config' ? 'active' : ''}" data-tab="config">🔌 CẤU HÌNH</div>
+          <div class="tab ${this._curTab === 'tiers' ? 'active' : ''}" data-tab="tiers">⚡ BẬC ĐIỆN</div>
+          <div class="tab ${this._curTab === 'display' ? 'active' : ''}" data-tab="display">🎨 HIỂN THỊ</div>
         </div>
 
-        <div class="section-title">🔌 Thực thể</div>
-        <div class="field-row">
-          <div class="field"><label>Tên CT1</label><input type="text" id="meter1_name" value="${e.meter1_name || ''}"></div>
-          <div class="field"><label>Tên CT2</label><input type="text" id="meter2_name" value="${e.meter2_name || ''}"></div>
+        <div id="tab-config" class="${this._curTab === 'config' ? '' : 'hidden'}">
+          <div class="section-title">Thực thể bắt buộc</div>
+          <div class="picker-slot"><label>Công tơ 1 kWh</label><div id="pk-meter1_kwh"></div></div>
+          <div class="picker-slot"><label>Công tơ 2 kWh</label><div id="pk-meter2_kwh"></div></div>
+          <div class="picker-slot"><label>Switch vật lý đảo nguồn</label><div id="pk-physical_switch"></div></div>
+          
+          <div class="section-title">Thực thể tùy chọn</div>
+          <div class="picker-slot"><label>Tiền CT1 (NPC)</label><div id="pk-meter1_cost"></div></div>
+          <div class="picker-slot"><label>Tiền CT2 (NPC)</label><div id="pk-meter2_cost"></div></div>
+          <div class="picker-slot"><label>Công suất lưới (Grid)</label><div id="pk-grid_power"></div></div>
+          <div class="picker-slot"><label>Switch chế độ Tự động</label><div id="pk-auto_mode"></div></div>
         </div>
-        <div class="picker-slot"><label>⚡ Công tơ 1 kWh</label><div id="pk-meter1_kwh"></div></div>
-        <div class="picker-slot"><label>⚡ Công tơ 2 kWh</label><div id="pk-meter2_kwh"></div></div>
-        <div class="picker-slot"><label>🔘 Switch vật lý</label><div id="pk-physical_switch"></div></div>
-        <div class="picker-slot"><label>💰 Tiền CT1 từ NPC</label><div id="pk-meter1_cost"></div></div>
-        <div class="picker-slot"><label>💰 Tiền CT2 từ NPC</label><div id="pk-meter2_cost"></div></div>
-        <div class="picker-slot"><label>⚡ Công suất lưới Grid</label><div id="pk-grid_power"></div></div>
-        <div class="picker-slot"><label>🔄 Switch chế độ tự động</label><div id="pk-auto_mode"></div></div>
 
-        <div class="section-title">⚡ Bảng giá bậc điện (VND/kWh)</div>
-        <div id="tiers-container">
-          ${tiers.map((t, i) => `
-            <div class="tier-row">
-              <span class="tier-num">Bậc ${i+1}</span>
-              <div class="field">
-                <label>Đến (kWh)</label>
-                <input type="number" class="t-limit" data-idx="${i}" value="${t.limit || ''}" placeholder="Vô hạn">
+        <div id="tab-tiers" class="${this._curTab === 'tiers' ? '' : 'hidden'}">
+          <div class="section-title">Quản lý biểu giá điện</div>
+          <div id="tiers-container">
+            ${tiers.map((t, i) => `
+              <div class="tier-row">
+                <span class="tier-num">Bậc ${i+1}</span>
+                <div class="field"><label>Đến (kWh)</label><input type="number" class="t-limit" data-idx="${i}" value="${t.limit || ''}" placeholder="Vô hạn"></div>
+                <div class="field"><label>Giá (VNĐ)</label><input type="number" class="t-price" data-idx="${i}" value="${t.price}"></div>
+                <button class="btn-del" data-idx="${i}">✕</button>
               </div>
-              <div class="field">
-                <label>Giá tiền</label>
-                <input type="number" class="t-price" data-idx="${i}" value="${t.price}">
-              </div>
-              <button class="btn-del" data-idx="${i}">✕</button>
+            `).join('')}
+          </div>
+          <button class="btn-add" id="btn-add-tier">+ THÊM BẬC MỚI</button>
+        </div>
+
+        <div id="tab-display" class="${this._curTab === 'display' ? '' : 'hidden'}">
+          <div class="section-title">Giao diện & Cảnh báo</div>
+          <div class="field"><label>Tiêu đề Card</label><input type="text" id="title" value="${c.title || ''}"></div>
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field"><label>Ngày chốt HĐ</label><input type="number" id="billing_day" value="${c.billing_day ?? 1}"></div>
+            <div class="field"><label>Thuế VAT (%)</label><input type="number" id="vat" value="${c.vat ?? 8}"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Chế độ cảnh báo</label>
+              <select id="warning_mode">
+                <option value="auto" ${(c.warning_mode || 'auto') === 'auto' ? 'selected' : ''}>Tự lấy trung bình ngày</option>
+                <option value="manual" ${c.warning_mode === 'manual' ? 'selected' : ''}>Thủ công</option>
+              </select>
             </div>
-          `).join('')}
+            ${c.warning_mode === 'manual' ? `<div class="field"><label>Ngưỡng (kWh)</label><input type="number" id="warning_threshold" value="${c.warning_threshold ?? 10}"></div>` : ''}
+          </div>
+          <div class="field-row">
+             <div class="field"><label>Giờ tự động đảo</label><input type="number" id="auto_switch_hour" value="${c.auto_switch_hour ?? ''}"></div>
+             <div class="field"><label>Switch ON là</label>
+               <select id="switch_on_is">
+                 <option value="meter1" ${(c.switch_on_is || 'meter1') === 'meter1' ? 'selected' : ''}>CT 1</option>
+                 <option value="meter2" ${c.switch_on_is === 'meter2' ? 'selected' : ''}>CT 2</option>
+               </select>
+             </div>
+          </div>
+          <div class="section-title">Tên hiển thị</div>
+          <div class="field-row">
+            <div class="field"><label>Tên CT 1</label><input type="text" id="meter1_name" value="${e.meter1_name || ''}"></div>
+            <div class="field"><label>Tên CT 2</label><input type="text" id="meter2_name" value="${e.meter2_name || ''}"></div>
+          </div>
         </div>
-        <button class="btn-add" id="btn-add-tier">+ THÊM BẬC MỚI</button>
       </div>`;
 
-    // Bindings
+    this.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => { this._curTab = t.dataset.tab; this._render(); };
+    });
+
     const bind = (id, path, type) => {
       const el = this.querySelector('#' + id);
       if (!el) return;
@@ -349,30 +363,22 @@ class MeterSwitcherCardEditor extends HTMLElement {
     bind('meter1_name', 'entities.meter1_name', 'text');
     bind('meter2_name', 'entities.meter2_name', 'text');
 
-    // Tiers Logic
-    this.querySelector('#btn-add-tier').onclick = () => {
-      const newTiers = [...tiers, { limit: null, price: 0 }];
-      this._set('tier_prices', newTiers);
-    };
-
+    this.querySelector('#btn-add-tier')?.addEventListener('click', () => {
+      this._set('tier_prices', [...tiers, { limit: null, price: 0 }]);
+    });
     this.querySelectorAll('.btn-del').forEach(btn => {
       btn.onclick = () => {
-        const idx = +btn.dataset.idx;
-        const newTiers = tiers.filter((_, i) => i !== idx);
-        this._set('tier_prices', newTiers);
+        this._set('tier_prices', tiers.filter((_, i) => i !== +btn.dataset.idx));
       };
     });
-
-    const updateTier = () => {
-      const newTiers = Array.from(this.querySelectorAll('.tier-row')).map(row => ({
-        limit: row.querySelector('.t-limit').value === '' ? null : +row.querySelector('.t-limit').value,
-        price: +row.querySelector('.t-price').value
-      }));
-      this._set('tier_prices', newTiers);
-    };
-
     this.querySelectorAll('.t-limit, .t-price').forEach(input => {
-      input.addEventListener('change', updateTier);
+      input.addEventListener('change', () => {
+        const newTiers = Array.from(this.querySelectorAll('.tier-row')).map(row => ({
+          limit: row.querySelector('.t-limit').value === '' ? null : +row.querySelector('.t-limit').value,
+          price: +row.querySelector('.t-price').value
+        }));
+        this._set('tier_prices', newTiers);
+      });
     });
 
     this._renderPickers();
