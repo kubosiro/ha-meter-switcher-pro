@@ -23,23 +23,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    # Sử dụng cách đăng ký đường dẫn tĩnh an toàn nhất, không gây crash hệ thống
-    try:
-        if hasattr(hass.http, "async_register_static_paths"):
-            # Nếu có hàm mới thì dùng (nhưng không dùng StaticPathConfig để tránh lỗi import)
-            _LOGGER.info("Registering static path via modern API")
-            # HA 2024.x có thể dùng dict thay vì class
-            pass 
-        
-        # Quay lại cách cổ điển nhưng bền bỉ nhất
-        hass.http.register_static_path(
-            "/meter-switcher/card.js",
-            hass.config.path("custom_components/meter_switcher/www/meter-switcher-card.js"),
-            True
-        )
-    except Exception as e:
-        _LOGGER.warning("Could not register static path: %s", e)
 
     return True
 

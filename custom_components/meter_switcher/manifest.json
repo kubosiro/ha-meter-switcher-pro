@@ -1,7 +1,7 @@
 {
   "domain": "meter_switcher",
   "name": "Meter Switcher Helper",
-  "documentation": "https://github.com/custom-components/meter_switcher",
+  "documentation": "https://github.com/kubosiro/ha-meter-switcher-pro",
   "dependencies": [],
   "codeowners": ["@antigravity"],
   "config_flow": true,

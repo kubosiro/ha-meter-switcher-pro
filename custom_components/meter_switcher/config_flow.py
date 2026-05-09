@@ -84,7 +84,6 @@ class MeterSwitcherOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Meter Switcher Helper."""
 
     def __init__(self, config_entry):
-        self.config_entry = config_entry
         self.options = dict(config_entry.data)
 
     async def async_step_init(self, user_input=None):
@@ -100,27 +99,27 @@ class MeterSwitcherOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_METERS,
-                    default=self.config_entry.data.get(CONF_METERS, []),
+                    default=self.options.get(CONF_METERS, []),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", multiple=True)
                 ),
                 vol.Optional(
                     CONF_PHYSICAL_SWITCH,
-                    default=self.config_entry.data.get(CONF_PHYSICAL_SWITCH),
+                    default=self.options.get(CONF_PHYSICAL_SWITCH),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="switch")
                 ),
                 vol.Optional(
                     CONF_BILLING_DAY,
-                    default=self.config_entry.data.get(CONF_BILLING_DAY, DEFAULT_BILLING_DAY)
+                    default=self.options.get(CONF_BILLING_DAY, DEFAULT_BILLING_DAY)
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=31)),
                 vol.Optional(
                     CONF_WARNING_THRESHOLD,
-                    default=self.config_entry.data.get(CONF_WARNING_THRESHOLD, DEFAULT_WARNING_THRESHOLD),
+                    default=self.options.get(CONF_WARNING_THRESHOLD, DEFAULT_WARNING_THRESHOLD),
                 ): vol.Coerce(float),
                 vol.Optional(
                     CONF_VAT,
-                    default=self.config_entry.data.get(CONF_VAT, DEFAULT_VAT)
+                    default=self.options.get(CONF_VAT, DEFAULT_VAT)
                 ): vol.Coerce(float),
             }),
         )
@@ -142,7 +141,7 @@ class MeterSwitcherOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_ON_METER,
-                    default=self.config_entry.data.get(CONF_ON_METER)
+                    default=self.options.get(CONF_ON_METER)
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(options=meter_options)
                 ),

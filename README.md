@@ -26,7 +26,11 @@ Vào **Settings -> Devices & Services -> Add Integration** -> Tìm kiếm **Mete
 
 ## 📊 Dashboard (Lovelace Card)
 
-Hệ thống sẽ **tự động đăng ký** card ngay sau khi cài đặt. Để sử dụng, hãy thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
+1. Vào **Settings -> Dashboards -> 3 chấm (Resources)**.
+2. Thêm Resource mới:
+   - URL: `/hacsfiles/meter_switcher/meter-switcher-card.js`
+   - Loại: `JavaScript Module`
+3. Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
 
 ```yaml
 type: custom:meter-switcher-card
