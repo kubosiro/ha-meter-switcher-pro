@@ -252,23 +252,23 @@ class MeterSwitcherCard extends HTMLElement {
     const billingDay  = c.billing_day  ?? 1;
     const warningThreshold = c.warning_threshold ?? 10;
     const autoHour    = c.auto_switch_hour ?? null;
+    const tiers        = c.tier_prices || EVN_TIERS;
     const switchOnIs  = c.switch_on_is ?? 'meter1';
 
     const kwh1  = this._getNum(e.meter1_kwh);
     const kwh2  = this._getNum(e.meter2_kwh);
-    // Use NPC cost sensor if provided, else calculate
-    const cost1 = e.meter1_cost ? this._getNum(e.meter1_cost) : calcTierAndCost(kwh1, vat).cost;
-    const cost2 = e.meter2_cost ? this._getNum(e.meter2_cost) : calcTierAndCost(kwh2, vat).cost;
-    const calc1 = calcTierAndCost(kwh1, vat);
-    const calc2 = calcTierAndCost(kwh2, vat);
+    const calc1 = calcTierAndCost(kwh1, vat, tiers);
+    const calc2 = calcTierAndCost(kwh2, vat, tiers);
+    const cost1 = e.meter1_cost ? this._getNum(e.meter1_cost) : calc1.cost;
+    const cost2 = e.meter2_cost ? this._getNum(e.meter2_cost) : calc2.cost;
 
     const totalKwh  = kwh1 + kwh2;
     const totalCost = cost1 + cost2;
-    const savings   = Math.max(0, calcTierAndCost(totalKwh, vat).cost - totalCost);
+    const savings   = Math.max(0, calcTierAndCost(totalKwh, vat, tiers).cost - totalCost);
 
     const { passed, total } = getDayInfo(billingDay);
     const fcKwh  = (totalKwh / passed) * total;
-    const fcCost = calcTierAndCost(fcKwh, vat).cost;
+    const fcCost = calcTierAndCost(fcKwh, vat, tiers).cost;
 
     const swSt       = this._getSt(e.physical_switch);
     const activeMeter = swSt === 'on' ? switchOnIs : (switchOnIs === 'meter1' ? 'meter2' : 'meter1');
