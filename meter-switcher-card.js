@@ -81,7 +81,9 @@ const CARD_CSS = `
   .meter-info { text-align:right; }
   .meter-val { font-size:13px; font-weight:900; color:rgba(255,255,255,.95); }
   .meter-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:2px; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
-  .warn-badge { font-size:9px; font-weight:700; color:#ff9800; background:rgba(255,152,0,.15); padding:1px 5px; border-radius:4px; }
+  .warn-badge { font-size:9px; font-weight:700; color:#ff4444; background:rgba(255,68,68,0.15); padding:1px 5px; border-radius:4px; }
+  .warn-dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; box-shadow: 0 0 8px #ff4444; animation: warn-pulse 1.2s infinite; display: inline-block; margin-left: 6px; vertical-align: middle; }
+  @keyframes warn-pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
 
   /* Bar */
   .bar-wrap { height:5px; background:rgba(255,255,255,.08); border-radius:3px; margin-top:8px; overflow:hidden; }
@@ -91,6 +93,7 @@ const CARD_CSS = `
   .bar-fill.t4 { background:#ffc107; }
   .bar-fill.t5 { background:#ff9800; }
   .bar-fill.t6 { background:#f44336; }
+  .bar-fill.is-warning { background: #ff4444 !important; box-shadow: 0 0 10px rgba(255,68,68,0.5); }
   .meter.active .bar-fill::after {
     content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
@@ -146,7 +149,7 @@ const CARD_HTML = `
         <div class="meter-name" id="m1-name"></div>
         <div class="meter-info">
           <div class="meter-val" id="m1-val"></div>
-          <div class="meter-sub"><span id="m1-tier"></span><span class="warn-badge" id="m1-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
+          <div class="meter-sub"><span id="m1-tier"></span><div class="warn-dot" id="m1-dot" style="display:none"></div><span class="warn-badge" id="m1-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
       </div>
       <div class="bar-wrap"><div class="bar-fill" id="m1-bar"></div></div>
@@ -157,7 +160,7 @@ const CARD_HTML = `
         <div class="meter-name" id="m2-name"></div>
         <div class="meter-info">
           <div class="meter-val" id="m2-val"></div>
-          <div class="meter-sub"><span id="m2-tier"></span><span class="warn-badge" id="m2-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
+          <div class="meter-sub"><span id="m2-tier"></span><div class="warn-dot" id="m2-dot" style="display:none"></div><span class="warn-badge" id="m2-warn" style="display:none">⚠ GẦN ĐẦY</span></div>
         </div>
       </div>
       <div class="bar-wrap"><div class="bar-fill" id="m2-bar"></div></div>
@@ -192,6 +195,253 @@ const CARD_HTML = `
     </div>
   </ha-card>
 `;
+
+// ─── Visual Editor ──────────────────────────────────────────────────────────
+
+class MeterSwitcherCardEditor extends HTMLElement {
+  set hass(hass) { this._hass = hass; this._renderPickers(); }
+
+  setConfig(config) {
+    this._config = JSON.parse(JSON.stringify(config));
+    this._render();
+  }
+
+  _fire(cfg) {
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: cfg }, bubbles: true, composed: true }));
+  }
+
+  _set(path, value) {
+    const cfg = JSON.parse(JSON.stringify(this._config || {}));
+    const keys = path.split('.');
+    let obj = cfg;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!obj[keys[i]]) obj[keys[i]] = {};
+      obj = obj[keys[i]];
+    }
+    if (value === '' || value === null || value === undefined) {
+      delete obj[keys[keys.length - 1]];
+    } else {
+      obj[keys[keys.length - 1]] = value;
+    }
+    this._config = cfg;
+    this._fire(cfg);
+  }
+
+  _render() {
+    if (!this._config) return;
+    const c = this._config;
+    const e = c.entities || {};
+    const tiers = c.tier_prices || EVN_TIERS;
+
+    this.innerHTML = `
+      <style>
+        .editor { padding: 8px; font-family: var(--primary-font-family, sans-serif); }
+        .section-title { font-size: 11px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;
+          letter-spacing: 0.8px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .field-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+        .field { flex: 1; }
+        label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
+        input[type=text], input[type=number], select {
+          width: 100%; box-sizing: border-box; padding: 7px 8px;
+          background: var(--secondary-background-color, #2c2c2e);
+          border: 1px solid var(--divider-color, rgba(255,255,255,.1));
+          border-radius: 6px; color: var(--primary-text-color); font-size: 12px;
+        }
+        .picker-slot { margin-bottom: 8px; }
+        .tier-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+        .tier-num { font-size: 10px; color: var(--primary-color); font-weight: 700; width: 40px; }
+        .btn-add { background: var(--primary-color); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+        .btn-del { background: rgba(255,68,68,0.2); color: #ff4444; border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; }
+      </style>
+      <div class="editor">
+        <div class="section-title">⚙️ Cấu hình chung</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tiêu đề Card</label>
+            <input type="text" id="title" value="${c.title || ''}" placeholder="TRẠM ĐIỀU KHIỂN ĐIỆN">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Ngày chốt HĐ</label>
+            <input type="number" id="billing_day" value="${c.billing_day ?? 1}">
+          </div>
+          <div class="field">
+            <label>Thuế VAT (%)</label>
+            <input type="number" id="vat" value="${c.vat ?? 8}">
+          </div>
+          <div class="field">
+            <label>Switch ON là</label>
+            <select id="switch_on_is">
+              <option value="meter1" ${(c.switch_on_is || 'meter1') === 'meter1' ? 'selected' : ''}>Công tơ 1</option>
+              <option value="meter2" ${c.switch_on_is === 'meter2' ? 'selected' : ''}>Công tơ 2</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Chế độ cảnh báo</label>
+            <select id="warning_mode">
+              <option value="auto" ${(c.warning_mode || 'auto') === 'auto' ? 'selected' : ''}>Tự lấy trung bình ngày</option>
+              <option value="manual" ${c.warning_mode === 'manual' ? 'selected' : ''}>Thủ công (Điền số)</option>
+            </select>
+          </div>
+          ${c.warning_mode === 'manual' ? `
+          <div class="field">
+            <label>Ngưỡng (kWh)</label>
+            <input type="number" id="warning_threshold" value="${c.warning_threshold ?? 10}">
+          </div>` : ''}
+          <div class="field">
+            <label>Giờ tự động đảo</label>
+            <input type="number" id="auto_switch_hour" value="${c.auto_switch_hour ?? ''}" placeholder="0-23">
+          </div>
+        </div>
+
+        <div class="section-title">🔌 Thực thể</div>
+        <div class="field-row">
+          <div class="field"><label>Tên CT1</label><input type="text" id="meter1_name" value="${e.meter1_name || ''}"></div>
+          <div class="field"><label>Tên CT2</label><input type="text" id="meter2_name" value="${e.meter2_name || ''}"></div>
+        </div>
+        <div class="picker-slot"><label>⚡ Công tơ 1 kWh</label><div id="pk-meter1_kwh"></div></div>
+        <div class="picker-slot"><label>⚡ Công tơ 2 kWh</label><div id="pk-meter2_kwh"></div></div>
+        <div class="picker-slot"><label>🔘 Switch vật lý</label><div id="pk-physical_switch"></div></div>
+        <div class="picker-slot"><label>💰 Tiền CT1 từ NPC</label><div id="pk-meter1_cost"></div></div>
+        <div class="picker-slot"><label>💰 Tiền CT2 từ NPC</label><div id="pk-meter2_cost"></div></div>
+        <div class="picker-slot"><label>⚡ Công suất lưới Grid</label><div id="pk-grid_power"></div></div>
+        <div class="picker-slot"><label>🔄 Switch chế độ tự động</label><div id="pk-auto_mode"></div></div>
+
+        <div class="section-title">⚡ Bảng giá bậc điện (VND/kWh)</div>
+        <div id="tiers-container">
+          ${tiers.map((t, i) => `
+            <div class="tier-row">
+              <span class="tier-num">Bậc ${i+1}</span>
+              <div class="field">
+                <label>Đến (kWh)</label>
+                <input type="number" class="t-limit" data-idx="${i}" value="${t.limit || ''}" placeholder="Vô hạn">
+              </div>
+              <div class="field">
+                <label>Giá tiền</label>
+                <input type="number" class="t-price" data-idx="${i}" value="${t.price}">
+              </div>
+              <button class="btn-del" data-idx="${i}">✕</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-add" id="btn-add-tier">+ THÊM BẬC MỚI</button>
+      </div>`;
+
+    // Bindings
+    const bind = (id, path, type) => {
+      const el = this.querySelector('#' + id);
+      if (!el) return;
+      el.addEventListener('change', () => {
+        const v = type === 'number' ? (el.value === '' ? undefined : +el.value) : el.value;
+        this._set(path, v);
+      });
+    };
+    bind('title', 'title', 'text');
+    bind('billing_day', 'billing_day', 'number');
+    bind('vat', 'vat', 'number');
+    bind('switch_on_is', 'switch_on_is', 'text');
+    bind('warning_mode', 'warning_mode', 'text');
+    bind('warning_threshold', 'warning_threshold', 'number');
+    bind('auto_switch_hour', 'auto_switch_hour', 'number');
+    bind('meter1_name', 'entities.meter1_name', 'text');
+    bind('meter2_name', 'entities.meter2_name', 'text');
+
+    // Tiers Logic
+    this.querySelector('#btn-add-tier').onclick = () => {
+      const newTiers = [...tiers, { limit: null, price: 0 }];
+      this._set('tier_prices', newTiers);
+    };
+
+    this.querySelectorAll('.btn-del').forEach(btn => {
+      btn.onclick = () => {
+        const idx = +btn.dataset.idx;
+        const newTiers = tiers.filter((_, i) => i !== idx);
+        this._set('tier_prices', newTiers);
+      };
+    });
+
+    const updateTier = () => {
+      const newTiers = Array.from(this.querySelectorAll('.tier-row')).map(row => ({
+        limit: row.querySelector('.t-limit').value === '' ? null : +row.querySelector('.t-limit').value,
+        price: +row.querySelector('.t-price').value
+      }));
+      this._set('tier_prices', newTiers);
+    };
+
+    this.querySelectorAll('.t-limit, .t-price').forEach(input => {
+      input.addEventListener('change', updateTier);
+    });
+
+    this._renderPickers();
+  }
+
+  _renderPickers() {
+    if (!this._hass || !this._config) return;
+    const e = this._config.entities || {};
+    const PICKERS = [
+      { id: 'meter1_kwh',      domain: 'sensor' },
+      { id: 'meter2_kwh',      domain: 'sensor' },
+      { id: 'physical_switch', domain: 'switch' },
+      { id: 'meter1_cost',     domain: 'sensor' },
+      { id: 'meter2_cost',     domain: 'sensor' },
+      { id: 'grid_power',      domain: 'sensor' },
+      { id: 'auto_mode',       domain: 'switch' },
+    ];
+    for (const { id, domain } of PICKERS) {
+      const slot = this.querySelector('#pk-' + id);
+      if (!slot) continue;
+      if (!slot.firstChild) {
+        const pk = document.createElement('ha-entity-picker');
+        pk.setAttribute('allow-custom-entity', '');
+        pk.includeDomains = [domain];
+        pk.value = e[id] || '';
+        pk.hass  = this._hass;
+        pk.addEventListener('value-changed', ev => this._set('entities.' + id, ev.detail.value));
+        slot.appendChild(pk);
+      } else {
+        slot.firstChild.hass = this._hass;
+        slot.firstChild.value = e[id] || '';
+      }
+    }
+  }
+
+  _renderPickers() {
+    if (!this._hass || !this._config) return;
+    const e = this._config.entities || {};
+    const PICKERS = [
+      { id: 'meter1_kwh',      domain: 'sensor' },
+      { id: 'meter2_kwh',      domain: 'sensor' },
+      { id: 'physical_switch', domain: 'switch' },
+      { id: 'meter1_cost',     domain: 'sensor' },
+      { id: 'meter2_cost',     domain: 'sensor' },
+      { id: 'grid_power',      domain: 'sensor' },
+      { id: 'auto_mode',       domain: 'switch' },
+    ];
+    for (const { id, domain } of PICKERS) {
+      const slot = this.querySelector('#pk-' + id);
+      if (!slot) continue;
+      if (!slot.firstChild) {
+        const pk = document.createElement('ha-entity-picker');
+        pk.setAttribute('allow-custom-entity', '');
+        pk.includeDomains = [domain];
+        pk.value = e[id] || '';
+        pk.hass  = this._hass;
+        pk.addEventListener('value-changed', ev => this._set('entities.' + id, ev.detail.value));
+        slot.appendChild(pk);
+      } else {
+        slot.firstChild.hass = this._hass;
+        slot.firstChild.value = e[id] || '';
+      }
+    }
+  }
+}
+
+customElements.define('meter-switcher-card-editor', MeterSwitcherCardEditor);
+
+// ─── Main Card ──────────────────────────────────────────────────────────────
 
 class MeterSwitcherCard extends HTMLElement {
   setConfig(config) {
@@ -250,13 +500,17 @@ class MeterSwitcherCard extends HTMLElement {
     const e  = c.entities || {};
     const vat         = c.vat         ?? 8;
     const billingDay  = c.billing_day  ?? 1;
-    const warningThreshold = c.warning_threshold ?? 10;
     const autoHour    = c.auto_switch_hour ?? null;
-    const tiers        = c.tier_prices || EVN_TIERS;
+    const tiers       = c.tier_prices || EVN_TIERS;
     const switchOnIs  = c.switch_on_is ?? 'meter1';
 
     const kwh1  = this._getNum(e.meter1_kwh);
     const kwh2  = this._getNum(e.meter2_kwh);
+    const { passed, total } = getDayInfo(billingDay);
+
+    // Dynamic Warning Threshold
+    const avgDaily = Math.max(10, (kwh1 + kwh2) / passed);
+    const threshold = c.warning_mode === 'manual' ? (c.warning_threshold ?? 10) : avgDaily;
     const calc1 = calcTierAndCost(kwh1, vat, tiers);
     const calc2 = calcTierAndCost(kwh2, vat, tiers);
     const cost1 = e.meter1_cost ? this._getNum(e.meter1_cost) : calc1.cost;
@@ -293,14 +547,15 @@ class MeterSwitcherCard extends HTMLElement {
 
     // Meters
     const renderMeter = (n, kwh, calcR, costVal, active) => {
-      const isWarn = calcR.remaining > 0 && calcR.remaining <= warningThreshold;
+      const isWarn = calcR.remaining > 0 && calcR.remaining <= threshold;
       Q(`m${n}-name`).textContent = e[`meter${n}_name`] || `Công tơ ${n}`;
       Q(`m${n}-val`).textContent  = `${fmtKwh(kwh)} | ${fmt(costVal)}`;
       Q(`m${n}-tier`).textContent = `Bậc ${calcR.tier}`;
       Q(`m${n}-warn`).style.display = isWarn ? 'inline-block' : 'none';
+      Q(`m${n}-dot`).style.display  = isWarn ? 'inline-block' : 'none';
       const bar = Q(`m${n}-bar`);
       bar.style.width = barPct(kwh, calcR) + '%';
-      bar.className   = `bar-fill ${tierCls(calcR.tier)}`;
+      bar.className   = `bar-fill ${tierCls(calcR.tier)}` + (isWarn ? ' is-warning' : '');
       const box = Q(`meter${n}`);
       box.className = 'meter' + (active ? ' active' : '') + (isWarn ? ' warning' : '');
     };
@@ -316,7 +571,8 @@ class MeterSwitcherCard extends HTMLElement {
     const ai = Q('auto-info');
     if (autoHour !== null) {
       ai.style.display = 'flex';
-      Q('ai-val').textContent = `${String(autoHour).padStart(2,'0')}:00  •  Báo trước ${warningThreshold} kWh`;
+      const lbl = c.warning_mode === 'manual' ? `Báo trước ${threshold} kWh` : `Cảnh báo Auto (${threshold.toFixed(1)} kWh/ngày)`;
+      Q('ai-val').textContent = `${String(autoHour).padStart(2,'0')}:00  •  ${lbl}`;
     } else {
       ai.style.display = 'none';
     }
@@ -457,12 +713,11 @@ class MeterSwitcherCard extends HTMLElement {
       billing_day: 1,
       vat: 8,
       switch_on_is: 'meter1',
-      warning_threshold: 10,
-      auto_switch_hour: 12,
+      warning_mode: 'auto',
       entities: {
-        meter1_name: 'Công tơ 1',
-        meter2_name: 'Công tơ 2',
-      },
+        meter1_name: 'Ông Mỵ',
+        meter2_name: 'Hùng',
+      }
     };
   }
 
@@ -472,204 +727,6 @@ class MeterSwitcherCard extends HTMLElement {
 }
 
 customElements.define('meter-switcher-card', MeterSwitcherCard);
-
-// ─── Visual Editor ──────────────────────────────────────────────────────────
-
-class MeterSwitcherCardEditor extends HTMLElement {
-  set hass(hass) { this._hass = hass; this._renderPickers(); }
-
-  setConfig(config) {
-    this._config = JSON.parse(JSON.stringify(config));
-    this._render();
-  }
-
-  _fire(cfg) {
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: cfg }, bubbles: true, composed: true }));
-  }
-
-  _set(path, value) {
-    const cfg = JSON.parse(JSON.stringify(this._config || {}));
-    const keys = path.split('.');
-    let obj = cfg;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (!obj[keys[i]]) obj[keys[i]] = {};
-      obj = obj[keys[i]];
-    }
-    if (value === '' || value === null || value === undefined) {
-      delete obj[keys[keys.length - 1]];
-    } else {
-      obj[keys[keys.length - 1]] = value;
-    }
-    this._config = cfg;
-    this._fire(cfg);
-  }
-
-  _render() {
-    if (!this._config) return;
-    const c = this._config;
-    const e = c.entities || {};
-    const tiers = c.tier_prices || EVN_TIERS;
-
-    this.innerHTML = `
-      <style>
-        .editor { padding: 8px; font-family: var(--primary-font-family, sans-serif); }
-        .section-title { font-size: 11px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;
-          letter-spacing: 0.8px; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .field-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .field { flex: 1; }
-        label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
-        input[type=text], input[type=number], select {
-          width: 100%; box-sizing: border-box; padding: 7px 8px;
-          background: var(--secondary-background-color, #2c2c2e);
-          border: 1px solid var(--divider-color, rgba(255,255,255,.1));
-          border-radius: 6px; color: var(--primary-text-color); font-size: 12px;
-        }
-        .tier-table { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
-        .tier-lbl { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
-        .picker-slot { margin-bottom: 8px; }
-        .picker-slot label { display: block; font-size: 10px; color: var(--secondary-text-color); margin-bottom: 3px; font-weight: 600; }
-      </style>
-      <div class="editor">
-        <div class="section-title">⚙️ Cấu hình chung</div>
-        <div class="field-row">
-          <div class="field">
-            <label>Tiêu đề</label>
-            <input type="text" id="title" value="${c.title || ''}" placeholder="TRẠM ĐIỀU KHIỂN ĐIỆN">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Ngày chốt HĐ (1-31)</label>
-            <input type="number" id="billing_day" value="${c.billing_day ?? 1}" min="1" max="31">
-          </div>
-          <div class="field">
-            <label>VAT (%)</label>
-            <input type="number" id="vat" value="${c.vat ?? 8}" min="0" max="20">
-          </div>
-          <div class="field">
-            <label>Cảnh báo trước (kWh)</label>
-            <input type="number" id="warning_threshold" value="${c.warning_threshold ?? 10}" min="1" max="50">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Khi switch ON dùng</label>
-            <select id="switch_on_is">
-              <option value="meter1" ${(c.switch_on_is || 'meter1') === 'meter1' ? 'selected' : ''}>Công tơ 1</option>
-              <option value="meter2" ${c.switch_on_is === 'meter2' ? 'selected' : ''}>Công tơ 2</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Giờ hiển thị tự động đảo</label>
-            <input type="number" id="auto_switch_hour" value="${c.auto_switch_hour ?? ''}" min="0" max="23" placeholder="(bỏ trống để ẩn)">
-          </div>
-        </div>
-
-        <div class="section-title">🔌 Thực thể</div>
-        <div class="field-row">
-          <div class="field">
-            <label>Tên Công tơ 1</label>
-            <input type="text" id="meter1_name" value="${e.meter1_name || ''}" placeholder="Công tơ 1">
-          </div>
-          <div class="field">
-            <label>Tên Công tơ 2</label>
-            <input type="text" id="meter2_name" value="${e.meter2_name || ''}" placeholder="Công tơ 2">
-          </div>
-        </div>
-
-        <div class="picker-slot"><label>⚡ CT1 kWh (BẮT BUỘC)</label><div id="pk-meter1_kwh"></div></div>
-        <div class="picker-slot"><label>⚡ CT2 kWh (BẮT BUỘC)</label><div id="pk-meter2_kwh"></div></div>
-        <div class="picker-slot"><label>🔘 Switch vật lý (BẮT BUỘC)</label><div id="pk-physical_switch"></div></div>
-        <div class="picker-slot"><label>💰 Tiền CT1 từ NPC (tuỳ chọn)</label><div id="pk-meter1_cost"></div></div>
-        <div class="picker-slot"><label>💰 Tiền CT2 từ NPC (tuỳ chọn)</label><div id="pk-meter2_cost"></div></div>
-        <div class="picker-slot"><label>⚡ Công suất lưới Grid (tuỳ chọn)</label><div id="pk-grid_power"></div></div>
-        <div class="picker-slot"><label>🔄 Switch chế độ tự động (tuỳ chọn)</label><div id="pk-auto_mode"></div></div>
-
-        <div class="section-title">⚡ Bảng giá bậc điện (QĐ 1279/QĐ-BCT)</div>
-        <div class="tier-table">
-          <span class="tier-lbl">Bậc 1 (0–50 kWh)</span>
-          <input type="number" id="t0" value="${tiers[0]?.price ?? 1984}" min="0">
-          <span class="tier-lbl">Bậc 2 (51–100 kWh)</span>
-          <input type="number" id="t1" value="${tiers[1]?.price ?? 2050}" min="0">
-          <span class="tier-lbl">Bậc 3 (101–200 kWh)</span>
-          <input type="number" id="t2" value="${tiers[2]?.price ?? 2380}" min="0">
-          <span class="tier-lbl">Bậc 4 (201–300 kWh)</span>
-          <input type="number" id="t3" value="${tiers[3]?.price ?? 2998}" min="0">
-          <span class="tier-lbl">Bậc 5 (301–400 kWh)</span>
-          <input type="number" id="t4" value="${tiers[4]?.price ?? 3350}" min="0">
-          <span class="tier-lbl">Bậc 6 (&gt;400 kWh)</span>
-          <input type="number" id="t5" value="${tiers[5]?.price ?? 3460}" min="0">
-        </div>
-      </div>`;
-
-    // Simple text/number inputs
-    const bind = (id, path, type) => {
-      const el = this.querySelector('#' + id);
-      if (!el) return;
-      el.addEventListener('change', () => {
-        const v = type === 'number' ? (el.value === '' ? undefined : +el.value) : el.value;
-        this._set(path, v);
-      });
-    };
-    bind('title',             'title',             'text');
-    bind('billing_day',       'billing_day',        'number');
-    bind('vat',               'vat',               'number');
-    bind('warning_threshold', 'warning_threshold', 'number');
-    bind('switch_on_is',      'switch_on_is',      'text');
-    bind('auto_switch_hour',  'auto_switch_hour',  'number');
-    bind('meter1_name',       'entities.meter1_name', 'text');
-    bind('meter2_name',       'entities.meter2_name', 'text');
-
-    // Tier prices
-    const LIMITS = [50, 100, 200, 300, 400, null];
-    for (let i = 0; i < 6; i++) {
-      this.querySelector('#t' + i)?.addEventListener('change', () => {
-        const prices = LIMITS.map((limit, j) => ({
-          limit,
-          price: +(this.querySelector('#t' + j)?.value || EVN_TIERS[j].price),
-        }));
-        this._set('tier_prices', prices);
-      });
-    }
-
-    this._renderPickers();
-  }
-
-  _renderPickers() {
-    if (!this._hass || !this._config) return;
-    const e = this._config.entities || {};
-    const PICKERS = [
-      { id: 'meter1_kwh',      domain: 'sensor', label: 'CT1 kWh' },
-      { id: 'meter2_kwh',      domain: 'sensor', label: 'CT2 kWh' },
-      { id: 'physical_switch', domain: 'switch', label: 'Switch vật lý' },
-      { id: 'meter1_cost',     domain: 'sensor', label: 'Tiền CT1' },
-      { id: 'meter2_cost',     domain: 'sensor', label: 'Tiền CT2' },
-      { id: 'grid_power',      domain: 'sensor', label: 'Grid Power' },
-      { id: 'auto_mode',       domain: 'switch', label: 'Chế độ tự động' },
-    ];
-    for (const { id, domain } of PICKERS) {
-      const slot = this.querySelector('#pk-' + id);
-      if (!slot) continue;
-      if (!slot.firstChild || slot.firstChild.tagName !== 'HA-ENTITY-PICKER') {
-        slot.innerHTML = '';
-        const pk = document.createElement('ha-entity-picker');
-        pk.setAttribute('allow-custom-entity', '');
-        pk.includeDomains = [domain];
-        pk.value = e[id] || '';
-        pk.hass  = this._hass;
-        pk.addEventListener('value-changed', ev => {
-          this._set('entities.' + id, ev.detail.value || undefined);
-        });
-        slot.appendChild(pk);
-      } else {
-        slot.firstChild.hass  = this._hass;
-        slot.firstChild.value = e[id] || '';
-      }
-    }
-  }
-}
-
-customElements.define('meter-switcher-card-editor', MeterSwitcherCardEditor);
 
 // ─── HACS Registration ───────────────────────────────────────────────────────
 
@@ -681,4 +738,5 @@ window.customCards.push({
   preview: false,
   documentationURL: 'https://github.com/kubosiro/ha-meter-switcher-pro',
 });
+
 
