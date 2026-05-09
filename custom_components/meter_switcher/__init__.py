@@ -29,8 +29,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "/meter-switcher/card.js",
         hass.config.path("custom_components/meter_switcher/www/meter-switcher-card.js"),
     )
+    
+    # Tự động đăng ký Resource vào Lovelace
+    hass.async_create_task(async_register_resource(hass))
 
     return True
+
+async def async_register_resource(hass: HomeAssistant):
+    """Tự động đăng ký Lovelace Resource nếu chưa có."""
+    resources = hass.data.get("lovelace", {}).get("resources")
+    if resources is None:
+        return
+
+    url = "/meter-switcher/card.js"
+    # Kiểm tra xem đã có resource này chưa
+    if any(res.get("url") == url for res in resources.async_items()):
+        return
+
+    _LOGGER.info("Đang tự động đăng ký Meter Switcher Card resource...")
+    await resources.async_create_item({"res_type": "module", "url": url})
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""

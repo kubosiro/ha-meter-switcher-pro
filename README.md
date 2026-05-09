@@ -1,9 +1,10 @@
 # ⚡ Meter Switcher Pro for Home Assistant
 
-**Meter Switcher Pro** là giải pháp tích hợp (All-in-one) quản lý và đảo nguồn giữa 2 công tơ điện. Tối ưu hóa hóa đơn tiền điện dựa trên các bậc thang tiêu thụ và đảm bảo an toàn vận hành điện lưới.
+**Meter Switch Pro** là giải pháp tích hợp (All-in-one) quản lý và đảo nguồn giữa 2 công tơ điện. Tối ưu hóa hóa đơn tiền điện dựa trên các bậc thang tiêu thụ và đảm bảo an toàn vận hành điện lưới.
 
 ## ✨ Tính năng chính
 
+- 🚀 **Zero-Config:** Tự động đăng ký Lovelace Card ngay sau khi cài đặt.
 - 🧠 **Tối ưu hóa bậc thang:** Tự động tính toán và đảo nguồn tại thời điểm tối ưu khi đạt ngưỡng tiêu thụ.
 - 🛡️ **Quy trình An toàn 3 Bước:** Giao diện xác nhận kép và cảnh báo tải lớn ngăn ngừa hư hỏng thiết bị.
 - 📊 **Dashboard Chuyên nghiệp:** Lovelace Card tích hợp thanh tiến độ đổi màu theo bậc và dự báo tiền điện cuối tháng.
@@ -19,21 +20,13 @@
 4. Nhấn **Install**.
 5. Khởi động lại Home Assistant.
 
-### Thủ công
-1. Tải thư mục `custom_components/meter_switcher` và dán vào thư mục `config/custom_components/`.
-2. Khởi động lại Home Assistant.
-
 ## 🛠️ Cấu hình Integration
 
 Vào **Settings -> Devices & Services -> Add Integration** -> Tìm kiếm **Meter Switcher Pro**. Ánh xạ các thực thể cảm biến và công tắc điều khiển theo hướng dẫn.
 
 ## 📊 Dashboard (Lovelace Card)
 
-1. Vào **Settings -> Dashboards -> 3 chấm (Resources)**.
-2. Thêm Resource mới:
-   - URL: `/meter-switcher/card.js`
-   - Loại: `JavaScript Module`
-3. Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
+Hệ thống sẽ **tự động đăng ký** card ngay sau khi cài đặt. Để sử dụng, hãy thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
 
 ```yaml
 type: custom:meter-switcher-card
