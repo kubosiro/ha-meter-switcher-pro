@@ -322,28 +322,56 @@ class MeterSwitcherCard extends HTMLElement {
     }
   }
 
+  _getGridWatts() {
+    const eid = this._config.entities?.grid_power;
+    if (!eid) return 0;
+    const s = this._hass.states[eid];
+    if (!s) return 0;
+    const val  = parseFloat(s.state) || 0;
+    const unit = (s.attributes?.unit_of_measurement || '').toLowerCase();
+    return (unit === 'kw' || unit === 'kwh') ? val * 1000 : val;
+  }
+
   _checkGridThenStart() {
-    const gp  = this._config.entities?.grid_power;
-    const val = gp ? this._getNum(gp) : 0;
-    if (val > 0) {
-      this._showGridWarning(val);
+    const watts = this._getGridWatts();
+    if (watts > 0) {
+      this._showGridWarning(watts);
       return;
     }
     this._phase1();
   }
 
-  _showGridWarning(val) {
+  _showGridWarning(watts) {
     const Q = id => this._q(id);
     Q('overlay').className    = 'overlay show';
-    Q('ov-title').textContent  = '⛔ KHÔNG THỂ ĐẢO NGUỒN';
+    Q('ov-title').textContent  = '⛔ ĐANG CÓ TẢI ĐIỆN';
     Q('ov-title').style.color  = '#f44336';
-    Q('ov-sub').textContent    = `Đang có tải ${Math.round(val)} W trên lưới điện`;
-    Q('ov-count').textContent  = '';
+    Q('ov-count').textContent  = Math.round(watts) + ' W';
+    Q('ov-count').style.color  = '#f44336';
     Q('ov-msg').style.display  = 'block';
-    Q('ov-msg').textContent    = '⚠️ Tắt tải điện trước khi đảo nguồn để tránh hư hỏng thiết bị và công tơ.';
+    Q('ov-msg').textContent    = '⚠️ Vui lòng tắt tải điện trước khi đảo nguồn để tránh hư hỏng thiết bị và công tơ.';
     Q('ov-btns').style.display = 'none';
-    Q('ov-hint').textContent   = 'Tự động đóng sau 3s...';
-    setTimeout(() => this._reset(), 3000);
+    Q('ov-hint').textContent   = 'Đang theo dõi tải... Sẽ thông báo khi tải về 0.';
+    Q('ov-sub').textContent    = 'Chưa thể đảo nguồn';
+
+    clearInterval(this._gridPollInterval);
+    this._gridPollInterval = setInterval(() => {
+      const w = this._getGridWatts();
+      Q('ov-count').textContent = Math.round(w) + ' W';
+      if (w <= 0) {
+        clearInterval(this._gridPollInterval);
+        Q('ov-title').textContent  = '✅ TẢI ĐÃ VỀ 0';
+        Q('ov-title').style.color  = '#4caf50';
+        Q('ov-count').style.color  = '#4caf50';
+        Q('ov-sub').textContent    = 'Có thể tiến hành đảo nguồn';
+        Q('ov-msg').style.display  = 'none';
+        Q('ov-hint').textContent   = '';
+        // Hiện nút Tiếp tục thay vì nút Xác nhận
+        Q('ov-btns').style.display = 'flex';
+        Q('ov-confirm').textContent = '▶ TIẾP TỤC ĐẢO';
+        Q('ov-confirm').onclick = () => { Q('overlay').className = 'overlay'; this._phase1(); };
+      }
+    }, 2000);
   }
 
   _phase1() {
@@ -412,8 +440,12 @@ class MeterSwitcherCard extends HTMLElement {
 
   _reset() {
     clearInterval(this._interval);
+    clearInterval(this._gridPollInterval);
     this._safetyState = 0;
     this._q('overlay').className = 'overlay';
+    // Reset confirm button text in case it was changed by grid warning
+    this._q('ov-confirm').textContent = '⚡ XÁC NHẬN ĐẢO';
+    this._q('ov-confirm').onclick = () => this._phase3();
     this._update();
   }
 
