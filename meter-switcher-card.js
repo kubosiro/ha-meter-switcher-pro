@@ -460,8 +460,17 @@ class MeterSwitcherCard extends HTMLElement {
 
   _bindEvents() {
     this._q('toggle-wrap').addEventListener('click', () => {
-      const am = this._config.entities?.auto_mode;
-      if (am) this._hass.callService('switch', 'toggle', { entity_id: am });
+      const e = this._config.entities || {};
+      const am = e.auto_mode;
+      if (am) {
+        this._hass.callService('switch', 'toggle', { entity_id: am });
+      } else {
+        // Internal Toggle Logic
+        const key = 'ms_auto_mode_' + (this._config.title || 'default');
+        const isCurrentlyOn = localStorage.getItem(key) === 'on';
+        localStorage.setItem(key, isCurrentlyOn ? 'off' : 'on');
+        this._update(); // Refresh UI immediately
+      }
     });
     ['meter1','meter2'].forEach(id => {
       this._q(id).addEventListener('click', () => {
@@ -500,26 +509,24 @@ class MeterSwitcherCard extends HTMLElement {
     const fcKwh  = (totalKwh / passed) * total;
     const fcCost = calcTierAndCost(fcKwh, vat, tiers).cost;
 
-    const swSt       = this._getSt(e.physical_switch);
-    const activeMeter = swSt === 'on' ? switchOnIs : (switchOnIs === 'meter1' ? 'meter2' : 'meter1');
-    const autoOn      = this._getSt(e.auto_mode) === 'on';
-
-    const barPct = (kwh, calc) => {
-      const tops = [50,100,200,300,400];
-      const bot  = calc.tier > 1 ? tops[calc.tier-2] : 0;
-      const top  = tops[calc.tier-1] ?? 400;
-      return Math.min(100, Math.round(((kwh-bot)/(top-bot))*100));
-    };
+    // Auto Mode Logic (Fallback to internal memory if no entity)
+    const amEntity = e.auto_mode;
+    let autoOn = false;
+    if (amEntity) {
+      autoOn = this._getSt(amEntity) === 'on';
+    } else {
+      // Internal memory fallback
+      const stored = localStorage.getItem('ms_auto_mode_' + (c.title || 'default'));
+      autoOn = stored === 'on';
+    }
 
     const Q = id => this._q(id);
-
     Q('title').textContent = c.title || 'ĐIỀU KHIỂN ĐIỆN';
 
-    // Toggle
-    const isAuto = autoOn;
-    Q('toggle-track').className = 'toggle-track' + (isAuto ? ' on' : '');
-    Q('lbl-auto').className   = 'toggle-lbl' + (isAuto ? ' on' : '');
-    Q('lbl-manual').className = 'toggle-lbl' + (!isAuto ? ' on' : '');
+    // Toggle UI
+    Q('toggle-track').className = 'toggle-track' + (autoOn ? ' on' : '');
+    Q('lbl-auto').className   = 'toggle-lbl' + (autoOn ? ' on' : '');
+    Q('lbl-manual').className = 'toggle-lbl' + (!autoOn ? ' on' : '');
 
     // Meters
     const renderMeter = (n, kwh, calcR, costVal, active) => {
