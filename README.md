@@ -1,57 +1,56 @@
-# ⚡ Meter Switcher Pro for Home Assistant
+# ⚡ Meter Switcher Card for Home Assistant
 
-**Meter Switch Pro** là giải pháp tích hợp (All-in-one) quản lý và đảo nguồn giữa 2 công tơ điện. Tối ưu hóa hóa đơn tiền điện dựa trên các bậc thang tiêu thụ và đảm bảo an toàn vận hành điện lưới.
+**Meter Switcher Card** là Lovelace Card giúp quản lý và đảo nguồn giữa 2 công tơ điện EVN với quy trình an toàn 3 bước. Tự tính toán bậc thang, chi phí và dự báo tiền điện cuối tháng — không cần cài thêm bất kỳ Integration nào.
 
 ## ✨ Tính năng chính
 
-- 🚀 **Zero-Config:** Tự động đăng ký Lovelace Card ngay sau khi cài đặt.
-- 🧠 **Tối ưu hóa bậc thang:** Tự động tính toán và đảo nguồn tại thời điểm tối ưu khi đạt ngưỡng tiêu thụ.
-- 🛡️ **Quy trình An toàn 3 Bước:** Giao diện xác nhận kép và cảnh báo tải lớn ngăn ngừa hư hỏng thiết bị.
-- 📊 **Dashboard Chuyên nghiệp:** Lovelace Card tích hợp thanh tiến độ đổi màu theo bậc và dự báo tiền điện cuối tháng.
-- 💰 **Theo dõi tài chính:** Tính toán chi phí tiết kiệm so với phương án sử dụng 1 công tơ.
-- 📱 **Tối ưu Mobile:** Giao diện tương thích hoàn hảo trên ứng dụng Home Assistant Mobile.
+- 🛡️ **Quy trình An toàn 3 Bước:** Chuẩn bị (5s) → Cảnh báo + Xác nhận (10s tự hủy) → Thực thi (3s).
+- 📊 **Tính toán thông minh:** Tự động tính bậc thang EVN, chi phí, tiết kiệm và dự báo cuối tháng.
+- 🔌 **Không phụ thuộc Backend:** Chỉ cần sensor kWh từ NPC integration, không cần cài thêm Custom Integration.
+- 📱 **Mobile-First:** Tối ưu cho ứng dụng Home Assistant Mobile.
 
-## 🚀 Cài đặt
+## 🚀 Cài đặt qua HACS
 
-### Qua HACS (Khuyến nghị)
-1. Mở **HACS** -> **Integrations**.
-2. Nhấn menu 3 chấm (góc trên bên phải) -> **Custom repositories**.
-3. Nhập link GitHub và chọn Category là **Integration**.
-4. Nhấn **Install**.
-5. Khởi động lại Home Assistant.
+1. Mở **HACS** -> **Frontend**.
+2. Nhấn menu 3 chấm -> **Custom repositories**.
+3. Nhập `https://github.com/kubosiro/ha-meter-switcher-pro` và chọn Category là **Frontend**.
+4. Nhấn **Download**.
+5. Khởi động lại Home Assistant (hoặc xóa cache trình duyệt).
 
-## 🛠️ Cấu hình Integration
+> HACS sẽ tự động đăng ký Resource. Không cần thêm thủ công.
 
-Vào **Settings -> Devices & Services -> Add Integration** -> Tìm kiếm **Meter Switcher Pro**. Ánh xạ các thực thể cảm biến và công tắc điều khiển theo hướng dẫn.
-
-## 📊 Dashboard (Lovelace Card)
-
-1. Vào **Settings -> Dashboards -> 3 chấm (Resources)**.
-2. Thêm Resource mới:
-   - URL: `/meter-switcher/card.js`
-   - Loại: `JavaScript Module`
-3. Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
+## 📊 Cấu hình Card
 
 ```yaml
 type: custom:meter-switcher-card
-title: "ĐIỀU KHIỂN ĐIỆN"
+title: "TRẠM ĐIỀU KHIỂN ĐIỆN"
+billing_day: 7        # Ngày chốt hóa đơn hàng tháng
+vat: 8                # % VAT (mặc định 8%)
+switch_on_is: meter1  # Khi switch ON thì đang dùng công tơ nào (meter1 hoặc meter2)
 entities:
-  meter1_name: "Công tơ 1"
-  meter2_name: "Công tơ 2"
-  meter1_kwh: sensor.tieu_thu_m1
-  meter1_bac: sensor.bac_m1
-  meter1_cost: sensor.tien_m1
-  meter2_kwh: sensor.tieu_thu_m2
-  meter2_bac: sensor.bac_m2
-  meter2_cost: sensor.tien_m2
-  active_meter: sensor.cong_to_dang_dung
+  meter1_name: "Tên công tơ 1"
+  meter2_name: "Tên công tơ 2"
+  meter1_kwh: sensor.tieu_thu_ky_nay_tieu_thu
+  meter2_kwh: sensor.tieu_thu_ky_nay_2_tieu_thu
   physical_switch: switch.sonoff_device
-  auto_mode: switch.che_do_tu_dong
-  total_kwh: sensor.tong_tieu_thu
-  total_cost: sensor.tong_tien_dien
-  savings: sensor.tien_tiet_kiem
-  forecast_kwh: sensor.du_bao_tieu_thu
-  forecast_cost: sensor.du_bao_tien_dien
+  auto_mode: switch.che_do_tu_dong        # Optional: toggle switch cho chế độ tự động
+```
+
+## ⚡ Tự động hóa đảo công tơ lúc 12h
+
+```yaml
+alias: "Tự động đảo công tơ lúc 12h"
+trigger:
+  - platform: time
+    at: "12:00:00"
+condition:
+  - condition: numeric_state
+    entity_id: sensor.tieu_thu_ky_nay_tieu_thu  # sensor công tơ đang dùng
+    above: 380   # ngưỡng đảo (ví dụ: gần hết bậc 6 = 400 kWh)
+action:
+  - service: switch.toggle
+    target:
+      entity_id: switch.sonoff_device
 ```
 
 ## 📄 Bản quyền
