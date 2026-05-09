@@ -23,6 +23,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # Đăng ký đường dẫn tĩnh cho Card
+    hass.http.register_static_path(
+        "/meter-switcher/card.js",
+        hass.config.path("custom_components/meter_switcher/www/meter-switcher-card.js"),
+    )
 
     return True
 

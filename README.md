@@ -27,9 +27,13 @@
 
 Vào **Settings -> Devices & Services -> Add Integration** -> Tìm kiếm **Meter Switcher Pro**. Ánh xạ các thực thể cảm biến và công tắc điều khiển theo hướng dẫn.
 
-## 📊 Cấu hình Lovelace Card
+## 📊 Dashboard (Lovelace Card)
 
-Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
+1. Vào **Settings -> Dashboards -> 3 chấm (Resources)**.
+2. Thêm Resource mới:
+   - URL: `/meter-switcher/card.js`
+   - Loại: `JavaScript Module`
+3. Thêm thẻ mới (Custom Card) vào Dashboard với cấu hình mẫu:
 
 ```yaml
 type: custom:meter-switcher-card
