@@ -524,7 +524,8 @@ class MeterSwitcherCard extends HTMLElement {
     // Meters
     const renderMeter = (n, kwh, calcR, costVal, active) => {
       const isWarn = calcR.remaining > 0 && calcR.remaining <= threshold;
-      Q(`m${n}-name`).textContent = e[`meter${n}_name`] || `Công tơ ${n}`;
+      const defaultName = n === 1 ? 'Đồng hồ 1' : 'Đồng hồ 2';
+      Q(`m${n}-name`).textContent = e[`meter${n}_name`] || defaultName;
       Q(`m${n}-val`).textContent  = `${fmtKwh(kwh)} | ${fmt(costVal)}`;
       Q(`m${n}-tier`).textContent = `Bậc ${calcR.tier}`;
       Q(`m${n}-warn`).style.display = isWarn ? 'inline-block' : 'none';
